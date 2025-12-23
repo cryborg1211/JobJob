@@ -7,12 +7,14 @@ export default {
     theme: {
         extend: {
             colors: {
-                'brand-cyan': '#00E5FF',
-                'brand-dark': '#0B0F19', // Dark Navy/Blackish
+                primary: '#00E5FF',     // Neon Cyan
+                background: '#0B0F19',  // Deep Space
+                surface: '#111827',     // Surface
+                secondary: '#0044CC',   // Deep Blue (kept for gradients)
             },
             fontFamily: {
                 sans: ['Inter', 'sans-serif'],
-            }
+            },
         },
     },
     plugins: [],

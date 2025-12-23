@@ -1,0 +1,64 @@
+# General
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.log
+
+# Node.js / Javascript
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store
+
+# Dist / Build
+dist/
+**/dist/
+build/
+**/build/
+.next/
+out/
+.output/
+
+# Environment Variables (CRITICAL for public repos)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+# Allow .env.example if you want to share a template, but ignore actual envs
+!.env.example
+
+# Python / Data Science
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+**/venv/
+**/.venv/
+*.egg-info/
+.coverage
+.restored_ignore
+htmlcov/
+.pytest_cache/
+input/
+output/
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Miscellaneous
+coverage/
+.cache
+tmp/
+temp/
