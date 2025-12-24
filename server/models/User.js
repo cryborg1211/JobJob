@@ -1,50 +1,60 @@
 const mongoose = require('mongoose');
 
-const UserSchema = new mongoose.Schema({
-    username: { type: String, required: true, unique: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true }, // Hashed
+const interactionSchema = new mongoose.Schema({
+    targetId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true
+    },
+    type: {
+        type: String,
+        enum: ['like', 'pass'],
+        required: true
+    },
+    date: {
+        type: Date,
+        default: Date.now
+    }
+}, { _id: false });
+
+const userSchema = new mongoose.Schema({
+    username: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    email: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    password: {
+        type: String,
+        required: true
+    },
     role: {
         type: String,
-        enum: ['candidate', 'employer', 'admin'],
+        enum: ['candidate', 'employer'],
         default: 'candidate'
     },
-
-    // Profile for Candidates
-    candidateProfile: {
-        fullName: String,
-        resumeUrl: String, // Link to CV
-        skills: [String],
-        experience: [{
-            title: String,
-            company: String,
-            duration: String,
-            description: String
-        }],
-        education: [{
-            degree: String,
-            institution: String,
-            year: String
-        }]
+    subscription: {
+        plan: {
+            type: String,
+            default: 'free'
+        },
+        expiresAt: {
+            type: Date
+        }
     },
-
-    // Profile for Employers
+    candidateProfile: {
+        skills: [String],
+        experience: String,
+        cvUrl: String
+    },
     companyProfile: {
         companyName: String,
-        industry: String,
-        website: String,
-        description: String,
-        logoUrl: String
+        website: String
     },
+    interactions: [interactionSchema]
+}, { timestamps: true });
 
-    // Interactions
-    interactions: {
-        savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }],
-        appliedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }],
-        likedCandidates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] // For employers
-    },
-
-    createdAt: { type: Date, default: Date.now }
-});
-
-module.exports = mongoose.model('User', UserSchema);
+module.exports = mongoose.model('User', userSchema);
