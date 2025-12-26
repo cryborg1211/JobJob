@@ -73,12 +73,17 @@ router.post('/register', async (req, res) => {
 // @desc    Authenticate user & get token
 // @access  Public
 router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+    const { username, email, password } = req.body;
 
     try {
-        // Find user by email
-        const user = await prisma.user.findUnique({
-            where: { email }
+        // Find user by username or email
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { username: username || '' },
+                    { email: email || username || '' }
+                ]
+            }
         });
 
         if (!user) {
