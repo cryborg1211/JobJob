@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  candidate
+  employer
+}
+
+enum InteractionType {
+  like
+  pass
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  role      Role     @default(candidate)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Subscription
+  subscriptionPlan      String    @default("free")
+  subscriptionExpiresAt DateTime?
+
+  // Candidate Profile
+  skills     String[] @default([])
+  experience String?
+  cvUrl      String?
+
+  // Employer/Company Profile
+  companyName    String?
+  companyWebsite String?
+
+  // Relations
+  jobs              Job[]
+  interactionsSent  Interaction[] @relation("InteractionFrom")
+  interactionsReceived Interaction[] @relation("InteractionTo")
+
+  @@map("users")
+}
+
+model Job {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  requirements String[] @default([])
+  salary      Int?
+  location    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  employerId String
+  employer   User   @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  interactions Interaction[]
+
+  @@map("jobs")
+}
+
+model Interaction {
+  id        String          @id @default(cuid())
+  type      InteractionType
+  createdAt DateTime        @default(now())
+
+  // User who performed the interaction
+  userId String
+  user   User   @relation("InteractionFrom", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Target can be either a Job (for candidates) or a User (for employers)
+  targetUserId String?
+  targetUser   User?   @relation("InteractionTo", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  targetJobId String?
+  targetJob   Job?    @relation(fields: [targetJobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetJobId])
+  @@unique([userId, targetUserId])
+  @@map("interactions")
+}
