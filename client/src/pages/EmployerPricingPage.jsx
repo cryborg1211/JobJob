@@ -23,8 +23,8 @@ const PricingCard = ({ title, price, features, recommended = false }) => (
             ))}
         </ul>
 
-        <Link to="/login" className="bg-black text-white py-4 rounded-full font-bold text-center hover:bg-gray-800 transition-colors uppercase text-sm tracking-widest">
-            SUBSCRIBE
+        <Link to="/signup?role=employer" className="bg-black text-white py-4 rounded-full font-bold text-center hover:bg-gray-800 transition-colors uppercase text-sm tracking-widest">
+            ĐĂNG KÝ NGAY
         </Link>
     </div>
 );
@@ -75,8 +75,8 @@ const EmployerPricingPage = () => {
                                 </li>
                             </ul>
 
-                            <Link to="/login" className="bg-black text-white py-4 rounded-full font-bold text-center hover:bg-gray-900 transition-colors uppercase text-sm tracking-widest">
-                                SUBSCRIBE
+                            <Link to="/signup?role=employer" className="bg-black text-white py-4 rounded-full font-bold text-center hover:bg-gray-900 transition-colors uppercase text-sm tracking-widest">
+                                ĐĂNG KÝ NGAY
                             </Link>
                         </div>
                     </div>

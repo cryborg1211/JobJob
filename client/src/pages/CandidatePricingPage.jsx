@@ -26,8 +26,8 @@ const CandidatePricingPage = () => {
                             </li>
                         </ul>
 
-                        <Link to="/login" className="bg-black text-white py-5 rounded-full font-bold text-center hover:bg-gray-800 transition-colors uppercase tracking-widest text-lg">
-                            SUBSCRIBE
+                        <Link to="/signup?role=candidate" className="bg-black text-white py-5 rounded-full font-bold text-center hover:bg-gray-800 transition-colors uppercase tracking-widest text-lg">
+                            ĐĂNG KÝ NGAY
                         </Link>
                     </div>
 
@@ -49,8 +49,8 @@ const CandidatePricingPage = () => {
                             </li>
                         </ul>
 
-                        <Link to="/login" className="bg-black text-white py-5 rounded-full font-bold text-center hover:bg-gray-900 transition-colors uppercase tracking-widest text-lg">
-                            SUBSCRIBE
+                        <Link to="/signup?role=candidate" className="bg-black text-white py-5 rounded-full font-bold text-center hover:bg-gray-900 transition-colors uppercase tracking-widest text-lg">
+                            ĐĂNG KÝ NGAY
                         </Link>
                     </div>
 

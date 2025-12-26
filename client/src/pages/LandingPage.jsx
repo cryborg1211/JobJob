@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { Rocket, FileText, Bell, Check, ArrowRight } from 'lucide-react';
 
@@ -18,12 +19,12 @@ const LandingPage = () => {
                         Lướt trái bỏ qua, quẹt phải là có việc – Jobjob, nơi cơ hội tìm đến bạn chỉ sau một cú click.
                     </p>
                     <div className="flex flex-wrap gap-4">
-                        <button className="bg-primary text-black font-bold px-8 py-3 rounded hover:bg-primary/90 transition-transform active:scale-95 shadow-glow">
-                            SUBSCRIBE
-                        </button>
-                        <button className="border border-white/20 text-text-main font-bold px-8 py-3 rounded hover:bg-white/5 transition-colors">
-                            FREE TRIAL
-                        </button>
+                        <Link to="/signup" className="bg-primary text-black font-bold px-8 py-3 rounded hover:bg-primary/90 transition-transform active:scale-95 shadow-glow">
+                            BẮT ĐẦU NGAY
+                        </Link>
+                        <Link to="/selection" className="border border-white/20 text-text-main font-bold px-8 py-3 rounded hover:bg-white/5 transition-colors">
+                            XEM GÓI CƯỚC
+                        </Link>
                     </div>
                 </div>
 
