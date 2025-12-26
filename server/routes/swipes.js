@@ -69,37 +69,31 @@ router.post('/', auth, async (req, res) => {
 
             } else if (targetModel === 'User') {
                 // Current user is Recruiter swiping on a Candidate
-                // Check if Candidate has liked ANY of the Recruiter's jobs
-                // NOTE: This is complex. Usually, a Recruiter swipes on a Candidate *for a specific Job*.
-                // For MVP, let's assume the Recruiter selects a Job context before swiping, OR
-                // we check if the candidate liked ANY job from this recruiter.
-                // Let's assume the request body includes `jobId` context if it's a Recruiter.
-
-                // However, standard Tinder flow:
-                // Candidate sees Jobs.
-                // Recruiter sees Candidates (filtered by Job requirements?).
-
-                // Let's support an optional `jobId` in the body for Recruiters.
+                // When a Recruiter swipes on a candidate, it MUST be in the context of a specific Job.
                 const { jobId } = req.body;
 
-                if (jobId) {
-                    // Check if Candidate (targetId) liked this specific Job
-                    const reciprocalSwipe = await Swipe.findOne({
-                        userId: targetId,
-                        targetId: jobId,
-                        type: 'like'
-                    });
+                if (!jobId) {
+                    // Reverse the swipe we just saved because the request was invalid for business logic
+                    await Swipe.findByIdAndDelete(swipe._id);
+                    return res.status(400).json({ msg: 'jobId is required when swiping on a candidate' });
+                }
 
-                    if (reciprocalSwipe) {
-                        isMatch = true;
-                        const newMatch = new Match({
-                            jobId: jobId,
-                            candidateId: targetId,
-                            recruiterId: userId
-                        });
-                        await newMatch.save();
-                        matchData = newMatch;
-                    }
+                // Check if Candidate (targetId) liked this specific Job
+                const reciprocalSwipe = await Swipe.findOne({
+                    userId: targetId,
+                    targetId: jobId,
+                    type: 'like'
+                });
+
+                if (reciprocalSwipe) {
+                    isMatch = true;
+                    const newMatch = new Match({
+                        jobId: jobId,
+                        candidateId: targetId,
+                        recruiterId: userId
+                    });
+                    await newMatch.save();
+                    matchData = newMatch;
                 }
             }
         }

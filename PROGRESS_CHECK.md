@@ -4,60 +4,54 @@
 
 | Feature | Status | Details |
 | :--- | :--- | :--- |
-| **Auth** | ✅ Partial | `Register` and `Login` endpoints implemented with JWT. `User` model supports roles (candidate/employer). |
-| **Swiping Logic** | ⚠️ Minimal | Data model (`User`) has an `interactions` array to store likes/passes. **Missing:** API endpoints for swiping, retrieving candidates/jobs to swipe on, and matching logic. |
-| **Chat** | ❌ Not Implemented | No data models or API endpoints for chat. |
-| **Payment/Subscription** | ⚠️ Minimal | `User` model has a `subscription` field. Frontend has pricing pages. **Missing:** Payment gateway integration, subscription management logic, and access control based on tiers. |
+| **Auth** | ✅ Complete | `Register` and `Login` endpoints implemented with JWT. `User` model supports roles (candidate/employer). |
+| **Swiping Logic** | ✅ Complete | **Backend Implemented.** `Swipe` model exists (polymorphic). Endpoints (`/api/swipes`) handle recording swipes and **automatically creating Matches** upon mutual likes. Endpoints to fetch candidates/jobs for swiping are also present. |
+| **Chat** | ⚠️ Backend Ready | **Backend Implemented.** `Match` and `Message` models exist. API endpoints (`/api/chat`) allow fetching matches and sending/receiving messages. **Missing:** Frontend UI and Real-time (Socket.io) implementation (currently REST-only). |
+| **Payment/Subscription** | ⚠️ Minimal | `User` model has a `subscription` field. Frontend has pricing pages. **Missing:** Payment gateway integration, subscription management logic, and **enforcement of limits** (e.g., stopping swipes after 12 for free users). |
 | **AI Matching** | ❌ Not Implemented | `matching-engine` directory exists but is empty. |
-| **Profile Management** | ⚠️ Partial | `User` model has fields for `candidateProfile` and `companyProfile`. **Missing:** API endpoints to update/fetch profiles. |
+| **Profile Management** | ⚠️ Partial | `User` model has fields. `jobs.js` likely handles Job CRUD (need to verify). **Missing:** Frontend UI for editing profiles. |
 
 ## 2. Architecture Review
 
 ### Backend API (Node.js/Express)
-*   **Structure:** Standard MVC pattern (`models`, `routes`, `controllers` implicitly in routes). Good starting point.
+*   **Structure:** Standard MVC pattern. The codebase has evolved significantly since the last check.
+*   **Routes:**
+    *   `auth.js`: Authentication.
+    *   `swipes.js`: Core matching engine logic. Handles `Job` vs `User` contexts well.
+    *   `chat.js`: Messaging logic.
+    *   `jobs.js`: Job management (implied, need to verify content).
 *   **Database:** MongoDB with Mongoose.
-*   **Security:** `bcryptjs` for password hashing, `jsonwebtoken` for auth, `cors` enabled.
+*   **Security:** `bcryptjs`, `jsonwebtoken`, `cors`.
 
 ### Database Schema
-*   **User Model (`server/models/User.js`):**
-    *   **Pros:** Centralized user management with roles.
-    *   **Cons:**
-        *   `interactions` array embedded in `User` document is **not scalable**. As a user swipes on thousands of profiles, this document will grow indefinitely.
-        *   Lack of a dedicated `Match` collection makes querying "My Matches" inefficient (requires scanning all users or complex aggregation).
-*   **Job Model (`server/models/Job.js`):**
-    *   **Pros:** Basic structure present.
-    *   **Cons:** Needs fields for "required skills" to match with candidate skills for the AI engine.
+*   **User Model:** Cleaned up. The unscalable `interactions` array was removed (or is no longer the primary source of truth) in favor of the `Swipe` collection.
+*   **Swipe Model:** Polymorphic (`targetModel`: 'User' or 'Job'). **Excellent design** for a two-sided marketplace. Index ensures uniqueness.
+*   **Match Model:** Dedicated collection for successful matches. Indexes on `candidateId` and `recruiterId` allow for fast "My Matches" queries.
+*   **Message Model:** Added. Links to `Match`.
 
 ### Frontend (React/Vite)
-*   **Structure:** Basic structure with Pages and Components.
-*   **Pages:** `LandingPage`, `LoginPage`, `SelectionPage` (role selection), and Pricing pages exist.
-*   **Missing:** Dashboard, Swipe Interface, Chat Interface, Profile Edit Pages.
+*   **Structure:** Basic routing and pages exist.
+*   **Status:** **Initiation Phase.** Assets (`profi_HR.png`, etc.) are ready.
+*   **Missing Components:**
+    *   **Swipe Deck:** The core interactive component.
+    *   **Match List:** Dashboard to see successful connections.
+    *   **Chat Window:** UI for messaging.
+    *   **Profile Editor:** Forms to update User/Job data.
 
 ## 3. Gap Analysis (for MVP Launch)
 
 ### Critical Backend Gaps
-1.  **Job Management API:** Create, Read, Update, Delete jobs.
-2.  **Profile Management API:** Endpoints to update skills, CV, company details.
-3.  **Swiping API:**
-    *   Endpoint to `GET` potential matches (candidates for employers, jobs for candidates).
-    *   Endpoint to `POST` a swipe (like/pass).
-    *   **Logic:** When a swipe is "like", check if the other party also "liked" -> Create a **Match**.
-4.  **Match Management:**
-    *   `Match` data model.
-    *   Endpoint to `GET` my matches.
-5.  **Chat:**
-    *   `Message` data model.
-    *   Endpoints to send/receive messages for a match.
+1.  **Subscription Enforcement:** The `swipes.js` logic needs to check the user's subscription tier and swipe count for the day before allowing a swipe.
+2.  **Real-time Notifications:** Currently, chat is polling-based (REST). WebSockets (Socket.io) would be a significant UX improvement for an "instant" chat feel.
 
 ### Critical Frontend Gaps
-1.  **Main Application Logic:**
-    *   **Swiping UI:** The core "Tinder-like" card stack.
-    *   **Dashboard:** To view matches.
-    *   **Chat UI:** To talk to matches.
-2.  **State Management:** Need to handle user session and data fetching.
+*   **Everything "Post-Login":** The entire application logic after a user logs in is missing from the frontend.
+    *   **Candidate View:** Swipe stack of Jobs -> Matches -> Chat.
+    *   **Recruiter View:** Dashboard of Jobs -> Swipe stack of Candidates (per Job) -> Matches -> Chat.
 
 ### AI Engine
-*   The `matching-engine` is currently empty. For MVP, a simple keyword matching algorithm (Node.js) might suffice before building a full Python AI service.
+*   Currently relying on basic filtering. The "AI" part (Resume parsing, smart recommendations) is a future enhancement.
 
-### Subscription
-*   Need to implement limits (e.g., check swipe count before allowing a swipe) based on the user's plan.
+### Immediate Action Items
+1.  **Fix:** `server/models/Message.js` was missing (Fixed).
+2.  **Frontend:** Begin implementation of the Swipe Interface using the provided assets.
