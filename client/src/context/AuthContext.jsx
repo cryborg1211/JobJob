@@ -28,7 +28,13 @@ export const AuthProvider = ({ children }) => {
                 body: JSON.stringify({ username, password })
             });
 
-            const data = await res.json();
+            const text = await res.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch {
+                throw new Error(text || 'Server error');
+            }
 
             if (!res.ok) {
                 throw new Error(data.msg || 'Login failed');
@@ -53,7 +59,13 @@ export const AuthProvider = ({ children }) => {
                 body: JSON.stringify(userData)
             });
 
-            const data = await res.json();
+            const text = await res.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch {
+                throw new Error(text || 'Server error');
+            }
 
             if (!res.ok) {
                 throw new Error(data.msg || 'Registration failed');
