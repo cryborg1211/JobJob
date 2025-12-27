@@ -42,7 +42,7 @@ router.get('/candidates/all', auth, async (req, res) => {
         });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -77,7 +77,7 @@ router.get('/me', auth, async (req, res) => {
         res.json(user);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -135,7 +135,7 @@ router.put('/me', auth, async (req, res) => {
         res.json(updatedUser);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -172,7 +172,7 @@ router.put('/me/subscription', auth, async (req, res) => {
         res.json(user);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -202,7 +202,7 @@ router.get('/:id', async (req, res) => {
         res.json(user);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 

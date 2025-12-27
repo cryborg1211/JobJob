@@ -97,7 +97,7 @@ router.post('/swipe', auth, async (req, res) => {
         });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -220,7 +220,7 @@ router.get('/matches', auth, async (req, res) => {
         res.json(matches);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
@@ -293,7 +293,7 @@ router.get('/history', auth, async (req, res) => {
         });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server error');
+        res.status(500).json({ msg: 'Server error' });
     }
 });
 
