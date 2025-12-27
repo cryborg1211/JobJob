@@ -153,7 +153,7 @@ router.put('/:id', auth, async (req, res) => {
             return res.status(401).json({ msg: 'Not authorized' });
         }
 
-        const { title, description, requirements, salary, location } = req.body;
+        const { title, description, requirements, salary, location, status } = req.body;
 
         const updateData = {};
         if (title) updateData.title = title;
@@ -161,6 +161,7 @@ router.put('/:id', auth, async (req, res) => {
         if (requirements) updateData.requirements = requirements;
         if (salary !== undefined) updateData.salary = salary ? Number(salary) : null;
         if (location) updateData.location = location;
+        if (status) updateData.status = status;
 
         const job = await prisma.job.update({
             where: { id: req.params.id },

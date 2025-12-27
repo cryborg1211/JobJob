@@ -54,6 +54,7 @@ model Job {
   requirements String[] @default([])
   salary      Int?
   location    String
+  status      String   @default("active")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
