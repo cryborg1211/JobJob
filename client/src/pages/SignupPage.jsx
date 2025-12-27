@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -17,8 +17,14 @@ const SignupPage = () => {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const { signup } = useAuth();
+    const { signup, isAuthenticated, loading } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!loading && isAuthenticated) {
+            navigate('/dashboard', { replace: true });
+        }
+    }, [isAuthenticated, loading, navigate]);
 
     const handleChange = (e) => {
         setFormData({
@@ -54,12 +60,7 @@ const SignupPage = () => {
         setIsLoading(false);
 
         if (result.success) {
-            // Navigate based on role
-            if (formData.role === 'employer') {
-                navigate('/pricing/employer');
-            } else {
-                navigate('/pricing/candidate');
-            }
+            navigate('/dashboard');
         } else {
             setError(result.error || 'Đăng ký thất bại');
         }

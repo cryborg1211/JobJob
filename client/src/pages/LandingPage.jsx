@@ -1,9 +1,27 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { Rocket, FileText, Bell, Check, ArrowRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Rocket } from 'lucide-react';
 
 const LandingPage = () => {
+    const { isAuthenticated, loading } = useAuth();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!loading && isAuthenticated) {
+            navigate('/dashboard', { replace: true });
+        }
+    }, [isAuthenticated, loading, navigate]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <div className="text-white">Loading...</div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-[#0B0F19] to-[#020617] text-white">
             <Navbar />
@@ -19,11 +37,11 @@ const LandingPage = () => {
                         Lướt trái bỏ qua, quẹt phải là có việc – Jobjob, nơi cơ hội tìm đến bạn chỉ sau một cú click.
                     </p>
                     <div className="flex flex-wrap gap-4">
-                        <Link to="/signup" className="bg-primary text-black font-bold px-8 py-3 rounded hover:bg-primary/90 transition-transform active:scale-95 shadow-glow">
+                        <Link to="/signup" className="bg-primary text-black font-bold px-8 py-3 rounded-lg hover:bg-primary/90 transition-transform active:scale-95 shadow-glow">
                             BẮT ĐẦU NGAY
                         </Link>
-                        <Link to="/selection" className="border border-white/20 text-text-main font-bold px-8 py-3 rounded hover:bg-white/5 transition-colors">
-                            XEM GÓI CƯỚC
+                        <Link to="/login" className="border border-white/20 text-text-main font-bold px-8 py-3 rounded-lg hover:bg-white/5 transition-colors">
+                            ĐĂNG NHẬP
                         </Link>
                     </div>
                 </div>
