@@ -1,9 +1,18 @@
 import React, { useState } from 'react';
-import { Menu, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Menu, X, LogOut } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { user, isAuthenticated, logout } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+        setIsMenuOpen(false);
+    };
 
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B0F19]/80 backdrop-blur-md border-b border-white/5">
@@ -15,7 +24,21 @@ const Navbar = () => {
                     <a href="#" className="hover:text-[#00E5FF] transition-colors">Giới thiệu</a>
                     <a href="#" className="hover:text-[#00E5FF] transition-colors">Liên Hệ</a>
                     <Link to="/selection" className="hover:text-[#00E5FF] transition-colors">Gói Cước</Link>
-                    <Link to="/login" className="bg-[#00E5FF] text-black px-4 py-2 rounded font-bold hover:bg-[#00E5FF]/90 transition-all shadow-[0_0_20px_rgba(0,229,255,0.4)] hover:scale-105">Đăng Nhập</Link>
+
+                    {isAuthenticated ? (
+                        <div className="flex items-center gap-4">
+                            <span className="text-[#00E5FF]">{user?.username}</span>
+                            <button
+                                onClick={handleLogout}
+                                className="flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded font-medium hover:bg-white/20 transition-all"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                Đăng Xuất
+                            </button>
+                        </div>
+                    ) : (
+                        <Link to="/login" className="bg-[#00E5FF] text-black px-4 py-2 rounded font-bold hover:bg-[#00E5FF]/90 transition-all shadow-[0_0_20px_rgba(0,229,255,0.4)] hover:scale-105">Đăng Nhập</Link>
+                    )}
                 </div>
 
                 {/* Mobile Menu Button */}
@@ -31,8 +54,16 @@ const Navbar = () => {
                 <div className="md:hidden bg-[#111827] border-b border-white/5 px-6 py-4 space-y-4">
                     <a href="#" className="block text-gray-300 hover:text-[#00E5FF]">Giới thiệu</a>
                     <a href="#" className="block text-gray-300 hover:text-[#00E5FF]">Liên Hệ</a>
-                    <Link to="/selection" className="block text-gray-300 hover:text-[#00E5FF]">Gói Cước</Link>
-                    <Link to="/login" className="block text-[#00E5FF] font-bold">Đăng Nhập</Link>
+                    <Link to="/selection" className="block text-gray-300 hover:text-[#00E5FF]" onClick={() => setIsMenuOpen(false)}>Gói Cước</Link>
+
+                    {isAuthenticated ? (
+                        <>
+                            <span className="block text-[#00E5FF]">{user?.username}</span>
+                            <button onClick={handleLogout} className="block text-gray-300 hover:text-[#00E5FF]">Đăng Xuất</button>
+                        </>
+                    ) : (
+                        <Link to="/login" className="block text-[#00E5FF] font-bold" onClick={() => setIsMenuOpen(false)}>Đăng Nhập</Link>
+                    )}
                 </div>
             )}
         </nav>
