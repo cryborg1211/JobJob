@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(wc:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(git -C /c/Users/Inugami/Documents/GitHub/JobJob log --oneline --all)",
+      "Bash(git -C /c/Users/Inugami/Documents/GitHub/JobJob show 05ab642 --stat)",
+      "Bash(node -e:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(python -m venv:*)",
+      "Bash(source venv/Scripts/activate)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

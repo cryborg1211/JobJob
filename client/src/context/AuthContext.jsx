@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { API_URL, parseResponse } from '../config/api';
 
 const AuthContext = createContext(null);
-
-const API_URL = 'http://localhost:5000/api';
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -14,7 +13,13 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem('token');
         const savedUser = localStorage.getItem('user');
         if (token && savedUser) {
-            setUser(JSON.parse(savedUser));
+            try {
+                setUser(JSON.parse(savedUser));
+            } catch {
+                // Invalid stored user data
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+            }
         }
         setLoading(false);
     }, []);
@@ -28,13 +33,7 @@ export const AuthProvider = ({ children }) => {
                 body: JSON.stringify({ identifier: username, password })
             });
 
-            const text = await res.text();
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch {
-                throw new Error(text || 'Server error');
-            }
+            const data = await parseResponse(res);
 
             if (!res.ok) {
                 throw new Error(data.msg || 'Login failed');
@@ -59,13 +58,7 @@ export const AuthProvider = ({ children }) => {
                 body: JSON.stringify(userData)
             });
 
-            const text = await res.text();
-            let data;
-            try {
-                data = JSON.parse(text);
-            } catch {
-                throw new Error(text || 'Server error');
-            }
+            const data = await parseResponse(res);
 
             if (!res.ok) {
                 throw new Error(data.msg || 'Registration failed');
@@ -87,6 +80,12 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const updateUser = (userData) => {
+        const updated = { ...user, ...userData };
+        localStorage.setItem('user', JSON.stringify(updated));
+        setUser(updated);
+    };
+
     const value = {
         user,
         loading,
@@ -94,6 +93,7 @@ export const AuthProvider = ({ children }) => {
         login,
         signup,
         logout,
+        updateUser,
         isAuthenticated: !!user
     };
 

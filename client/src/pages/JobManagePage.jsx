@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { authFetch } from '../config/api';
 import { Briefcase, Plus, MapPin, DollarSign, Edit2, Trash2, RefreshCw, Eye, EyeOff } from 'lucide-react';
-
-const API_URL = 'http://localhost:5000/api';
 
 const JobManagePage = () => {
     const [jobs, setJobs] = useState([]);
@@ -15,10 +14,7 @@ const JobManagePage = () => {
         setLoading(true);
         setError(null);
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/jobs/employer/me`, {
-                headers: { 'x-auth-token': token }
-            });
+            const res = await authFetch('/jobs/employer/me');
 
             if (!res.ok) {
                 throw new Error('Failed to fetch jobs');
@@ -42,10 +38,8 @@ const JobManagePage = () => {
 
         setDeletingId(jobId);
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/jobs/${jobId}`, {
-                method: 'DELETE',
-                headers: { 'x-auth-token': token }
+            const res = await authFetch(`/jobs/${jobId}`, {
+                method: 'DELETE'
             });
 
             if (res.ok) {
@@ -62,13 +56,8 @@ const JobManagePage = () => {
 
     const toggleStatus = async (jobId, currentStatus) => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/jobs/${jobId}`, {
+            const res = await authFetch(`/jobs/${jobId}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-auth-token': token
-                },
                 body: JSON.stringify({ status: currentStatus === 'active' ? 'inactive' : 'active' })
             });
 

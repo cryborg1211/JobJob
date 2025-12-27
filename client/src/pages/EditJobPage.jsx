@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { authFetch } from '../config/api';
-import { ArrowLeft, Plus, X, Save } from 'lucide-react';
+import { ArrowLeft, Plus, X, Save, RefreshCw } from 'lucide-react';
 
-const CreateJobPage = () => {
+const EditJobPage = () => {
     const navigate = useNavigate();
+    const { id } = useParams();
+    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [newRequirement, setNewRequirement] = useState('');
@@ -17,6 +19,31 @@ const CreateJobPage = () => {
         salary: '',
         requirements: []
     });
+
+    useEffect(() => {
+        fetchJob();
+    }, [id]);
+
+    const fetchJob = async () => {
+        try {
+            const res = await authFetch(`/jobs/${id}`);
+            if (!res.ok) {
+                throw new Error('Job not found');
+            }
+            const job = await res.json();
+            setFormData({
+                title: job.title || '',
+                description: job.description || '',
+                location: job.location || '',
+                salary: job.salary?.toString() || '',
+                requirements: job.requirements || []
+            });
+        } catch (err) {
+            setError('Không thể tải thông tin việc làm');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -59,8 +86,8 @@ const CreateJobPage = () => {
         setSaving(true);
 
         try {
-            const res = await authFetch('/jobs', {
-                method: 'POST',
+            const res = await authFetch(`/jobs/${id}`, {
+                method: 'PUT',
                 body: JSON.stringify({
                     ...formData,
                     salary: formData.salary ? Number(formData.salary) : null
@@ -69,16 +96,27 @@ const CreateJobPage = () => {
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.msg || 'Failed to create job');
+                throw new Error(data.msg || 'Failed to update job');
             }
 
             navigate('/jobs/manage');
         } catch (err) {
-            setError(err.message || 'Không thể tạo tin tuyển dụng');
+            setError(err.message || 'Không thể cập nhật tin tuyển dụng');
         } finally {
             setSaving(false);
         }
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-b from-[#0B0F19] to-[#020617] text-white">
+                <Navbar />
+                <div className="pt-24 flex items-center justify-center">
+                    <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-[#0B0F19] to-[#020617] text-white">
@@ -93,7 +131,7 @@ const CreateJobPage = () => {
                     Quay lại
                 </button>
 
-                <h1 className="text-3xl font-bold mb-8">Đăng Tin Tuyển Dụng</h1>
+                <h1 className="text-3xl font-bold mb-8">Chỉnh Sửa Tin Tuyển Dụng</h1>
 
                 {error && (
                     <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400">
@@ -216,7 +254,7 @@ const CreateJobPage = () => {
                         className="w-full bg-primary text-black py-4 rounded-xl font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         <Save className="w-5 h-5" />
-                        {saving ? 'Đang tạo...' : 'Đăng tin tuyển dụng'}
+                        {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
                     </button>
                 </form>
             </div>
@@ -224,4 +262,4 @@ const CreateJobPage = () => {
     );
 };
 
-export default CreateJobPage;
+export default EditJobPage;

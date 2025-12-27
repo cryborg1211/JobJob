@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
+import { authFetch } from '../config/api';
 import { User, Briefcase, Save, Plus, X } from 'lucide-react';
-
-const API_URL = 'http://localhost:5000/api';
 
 const ProfilePage = () => {
     const { user } = useAuth();
@@ -27,10 +26,12 @@ const ProfilePage = () => {
 
     const fetchProfile = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/users/me`, {
-                headers: { 'x-auth-token': token }
-            });
+            const res = await authFetch('/users/me');
+
+            if (!res.ok) {
+                throw new Error('Failed to fetch profile');
+            }
+
             const data = await res.json();
 
             setFormData({
@@ -53,23 +54,19 @@ const ProfilePage = () => {
         setMessage({ type: '', text: '' });
 
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/users/me`, {
+            const res = await authFetch('/users/me', {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-auth-token': token
-                },
                 body: JSON.stringify(formData)
             });
 
             if (res.ok) {
                 setMessage({ type: 'success', text: 'Cập nhật thành công!' });
             } else {
-                throw new Error('Update failed');
+                const data = await res.json();
+                throw new Error(data.msg || 'Update failed');
             }
         } catch (err) {
-            setMessage({ type: 'error', text: 'Cập nhật thất bại' });
+            setMessage({ type: 'error', text: err.message || 'Cập nhật thất bại' });
         } finally {
             setSaving(false);
         }

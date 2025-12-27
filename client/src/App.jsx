@@ -14,6 +14,7 @@ import ProfilePage from './pages/ProfilePage';
 import MatchesPage from './pages/MatchesPage';
 import JobManagePage from './pages/JobManagePage';
 import CreateJobPage from './pages/CreateJobPage';
+import EditJobPage from './pages/EditJobPage';
 
 function App() {
     return (
@@ -59,6 +60,11 @@ function App() {
                     <Route path="/jobs/create" element={
                         <ProtectedRoute requiredRole="employer">
                             <CreateJobPage />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/jobs/edit/:id" element={
+                        <ProtectedRoute requiredRole="employer">
+                            <EditJobPage />
                         </ProtectedRoute>
                     } />
                 </Routes>

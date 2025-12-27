@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
+import { authFetch } from '../config/api';
 import { X, Heart, MapPin, DollarSign, Briefcase, User, RefreshCw } from 'lucide-react';
-
-const API_URL = 'http://localhost:5000/api';
 
 const SwipeCard = ({ item, isEmployer, onSwipe }) => {
     const [dragDirection, setDragDirection] = useState(null);
@@ -137,18 +136,15 @@ const SwipePage = () => {
         setLoading(true);
         setError(null);
         try {
-            const token = localStorage.getItem('token');
-            let url;
+            const endpoint = isEmployer
+                ? '/users/candidates/all?limit=20'
+                : '/jobs?limit=20';
 
-            if (isEmployer) {
-                url = `${API_URL}/users/candidates/all?limit=20`;
-            } else {
-                url = `${API_URL}/jobs?limit=20`;
+            const res = await authFetch(endpoint);
+
+            if (!res.ok) {
+                throw new Error('Failed to fetch');
             }
-
-            const res = await fetch(url, {
-                headers: { 'x-auth-token': token }
-            });
 
             const data = await res.json();
 
@@ -172,15 +168,10 @@ const SwipePage = () => {
         if (items.length === 0) return;
 
         const currentItem = items[0];
-        const token = localStorage.getItem('token');
 
         try {
-            await fetch(`${API_URL}/interactions/swipe`, {
+            await authFetch('/interactions/swipe', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-auth-token': token
-                },
                 body: JSON.stringify({
                     targetId: currentItem.id,
                     type,

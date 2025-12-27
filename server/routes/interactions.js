@@ -3,6 +3,9 @@ const router = express.Router();
 const prisma = require('../lib/prisma');
 const { auth } = require('../middleware/auth');
 
+// Validation helpers
+const isValidCuid = (id) => typeof id === 'string' && id.length > 0 && id.length <= 30;
+
 // @route   POST api/interactions/swipe
 // @desc    Record a like or pass interaction
 // @access  Private
@@ -10,8 +13,17 @@ router.post('/swipe', auth, async (req, res) => {
     try {
         const { targetId, type, targetType } = req.body;
 
+        // Validate input
+        if (!targetId || !isValidCuid(targetId)) {
+            return res.status(400).json({ msg: 'Invalid target ID' });
+        }
+
         if (!['like', 'pass'].includes(type)) {
             return res.status(400).json({ msg: 'Invalid interaction type' });
+        }
+
+        if (targetType && !['job', 'user'].includes(targetType)) {
+            return res.status(400).json({ msg: 'Invalid target type' });
         }
 
         const user = await prisma.user.findUnique({
@@ -22,10 +34,52 @@ router.post('/swipe', auth, async (req, res) => {
             return res.status(404).json({ msg: 'User not found' });
         }
 
-        // Determine if target is a job or user based on user role or explicit targetType
+        // Determine target type based on user role
         const isTargetJob = targetType === 'job' || user.role === 'candidate';
 
-        // Check if already interacted
+        // Validate target exists and is appropriate for user role
+        if (isTargetJob) {
+            // Candidate swiping on jobs
+            if (user.role !== 'candidate') {
+                return res.status(400).json({ msg: 'Only candidates can swipe on jobs' });
+            }
+
+            const job = await prisma.job.findUnique({
+                where: { id: targetId }
+            });
+
+            if (!job) {
+                return res.status(404).json({ msg: 'Job not found' });
+            }
+
+            if (job.status !== 'active') {
+                return res.status(400).json({ msg: 'Cannot interact with inactive job' });
+            }
+        } else {
+            // Employer swiping on candidates
+            if (user.role !== 'employer') {
+                return res.status(400).json({ msg: 'Only employers can swipe on candidates' });
+            }
+
+            const targetUser = await prisma.user.findUnique({
+                where: { id: targetId }
+            });
+
+            if (!targetUser) {
+                return res.status(404).json({ msg: 'Candidate not found' });
+            }
+
+            if (targetUser.role !== 'candidate') {
+                return res.status(400).json({ msg: 'Can only swipe on candidates' });
+            }
+
+            // Prevent self-swipe
+            if (targetId === req.user.id) {
+                return res.status(400).json({ msg: 'Cannot swipe on yourself' });
+            }
+        }
+
+        // Check if already interacted - use upsert pattern to avoid race condition
         const existingInteraction = await prisma.interaction.findFirst({
             where: {
                 userId: req.user.id,
@@ -37,14 +91,23 @@ router.post('/swipe', auth, async (req, res) => {
             return res.status(400).json({ msg: 'Already interacted with this target' });
         }
 
-        // Create interaction
-        const interaction = await prisma.interaction.create({
-            data: {
-                userId: req.user.id,
-                type,
-                ...(isTargetJob ? { targetJobId: targetId } : { targetUserId: targetId })
+        // Create interaction with error handling for race condition
+        let interaction;
+        try {
+            interaction = await prisma.interaction.create({
+                data: {
+                    userId: req.user.id,
+                    type,
+                    ...(isTargetJob ? { targetJobId: targetId } : { targetUserId: targetId })
+                }
+            });
+        } catch (err) {
+            // Handle unique constraint violation (race condition)
+            if (err.code === 'P2002') {
+                return res.status(400).json({ msg: 'Already interacted with this target' });
             }
-        });
+            throw err;
+        }
 
         // Check for mutual match
         let isMatch = false;
@@ -53,7 +116,8 @@ router.post('/swipe', auth, async (req, res) => {
             if (user.role === 'candidate' && isTargetJob) {
                 // Candidate liked a job - check if employer liked this candidate
                 const job = await prisma.job.findUnique({
-                    where: { id: targetId }
+                    where: { id: targetId },
+                    select: { employerId: true }
                 });
 
                 if (job) {
@@ -68,18 +132,13 @@ router.post('/swipe', auth, async (req, res) => {
                 }
             } else if (user.role === 'employer' && !isTargetJob) {
                 // Employer liked a candidate - check if candidate liked any of employer's jobs
-                const employerJobs = await prisma.job.findMany({
-                    where: { employerId: req.user.id },
-                    select: { id: true }
-                });
-
-                const jobIds = employerJobs.map(j => j.id);
-
                 const candidateLikedJob = await prisma.interaction.findFirst({
                     where: {
                         userId: targetId,
-                        targetJobId: { in: jobIds },
-                        type: 'like'
+                        type: 'like',
+                        targetJob: {
+                            employerId: req.user.id
+                        }
                     }
                 });
                 isMatch = !!candidateLikedJob;
@@ -96,16 +155,20 @@ router.post('/swipe', auth, async (req, res) => {
             }
         });
     } catch (err) {
-        console.error(err.message);
+        console.error('Swipe error:', err.message);
         res.status(500).json({ msg: 'Server error' });
     }
 });
 
 // @route   GET api/interactions/matches
-// @desc    Get all mutual matches
+// @desc    Get all mutual matches with pagination
 // @access  Private
 router.get('/matches', auth, async (req, res) => {
     try {
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+        const skip = (page - 1) * limit;
+
         const user = await prisma.user.findUnique({
             where: { id: req.user.id }
         });
@@ -114,19 +177,35 @@ router.get('/matches', auth, async (req, res) => {
             return res.status(404).json({ msg: 'User not found' });
         }
 
-        const matches = [];
+        let matches = [];
+        let total = 0;
 
         if (user.role === 'candidate') {
-            // Get jobs the candidate liked
-            const likedJobs = await prisma.interaction.findMany({
+            // Optimized query: Get jobs liked by candidate where employer also liked the candidate
+            const likedJobsWithMutualLike = await prisma.interaction.findMany({
                 where: {
                     userId: req.user.id,
                     type: 'like',
-                    targetJobId: { not: null }
+                    targetJobId: { not: null },
+                    targetJob: {
+                        employer: {
+                            interactionsSent: {
+                                some: {
+                                    targetUserId: req.user.id,
+                                    type: 'like'
+                                }
+                            }
+                        }
+                    }
                 },
                 include: {
                     targetJob: {
-                        include: {
+                        select: {
+                            id: true,
+                            title: true,
+                            description: true,
+                            salary: true,
+                            location: true,
                             employer: {
                                 select: {
                                     id: true,
@@ -137,42 +216,67 @@ router.get('/matches', auth, async (req, res) => {
                             }
                         }
                     }
-                }
+                },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit
             });
 
-            // Check which employers liked this candidate back
-            for (const interaction of likedJobs) {
-                if (!interaction.targetJob) continue;
-
-                const employerLikedBack = await prisma.interaction.findFirst({
-                    where: {
-                        userId: interaction.targetJob.employerId,
-                        targetUserId: req.user.id,
-                        type: 'like'
-                    }
-                });
-
-                if (employerLikedBack) {
-                    matches.push({
-                        job: {
-                            id: interaction.targetJob.id,
-                            title: interaction.targetJob.title,
-                            description: interaction.targetJob.description,
-                            salary: interaction.targetJob.salary,
-                            location: interaction.targetJob.location
-                        },
-                        employer: interaction.targetJob.employer,
-                        matchedAt: employerLikedBack.createdAt
-                    });
-                }
-            }
-        } else {
-            // Employer - get candidates they liked
-            const likedCandidates = await prisma.interaction.findMany({
+            // Get total count for pagination
+            total = await prisma.interaction.count({
                 where: {
                     userId: req.user.id,
                     type: 'like',
-                    targetUserId: { not: null }
+                    targetJobId: { not: null },
+                    targetJob: {
+                        employer: {
+                            interactionsSent: {
+                                some: {
+                                    targetUserId: req.user.id,
+                                    type: 'like'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            matches = likedJobsWithMutualLike.map(interaction => ({
+                job: interaction.targetJob,
+                employer: interaction.targetJob?.employer,
+                matchedAt: interaction.createdAt
+            }));
+        } else {
+            // Employer: Get candidates they liked who also liked their jobs
+            const employerJobs = await prisma.job.findMany({
+                where: { employerId: req.user.id },
+                select: { id: true, title: true }
+            });
+            const jobIds = employerJobs.map(j => j.id);
+
+            if (jobIds.length === 0) {
+                return res.json({
+                    matches: [],
+                    totalPages: 0,
+                    currentPage: page,
+                    total: 0
+                });
+            }
+
+            // Find candidates the employer liked who also liked one of their jobs
+            const likedCandidatesWithMutualLike = await prisma.interaction.findMany({
+                where: {
+                    userId: req.user.id,
+                    type: 'like',
+                    targetUserId: { not: null },
+                    targetUser: {
+                        interactionsSent: {
+                            some: {
+                                type: 'like',
+                                targetJobId: { in: jobIds }
+                            }
+                        }
+                    }
                 },
                 include: {
                     targetUser: {
@@ -180,46 +284,69 @@ router.get('/matches', auth, async (req, res) => {
                             id: true,
                             username: true,
                             skills: true,
-                            experience: true
+                            experience: true,
+                            interactionsSent: {
+                                where: {
+                                    type: 'like',
+                                    targetJobId: { in: jobIds }
+                                },
+                                select: {
+                                    targetJobId: true,
+                                    createdAt: true
+                                },
+                                take: 1
+                            }
+                        }
+                    }
+                },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit
+            });
+
+            total = await prisma.interaction.count({
+                where: {
+                    userId: req.user.id,
+                    type: 'like',
+                    targetUserId: { not: null },
+                    targetUser: {
+                        interactionsSent: {
+                            some: {
+                                type: 'like',
+                                targetJobId: { in: jobIds }
+                            }
                         }
                     }
                 }
             });
 
-            // Get employer's jobs
-            const employerJobs = await prisma.job.findMany({
-                where: { employerId: req.user.id },
-                select: { id: true, title: true }
+            matches = likedCandidatesWithMutualLike.map(interaction => {
+                const candidateJobLike = interaction.targetUser?.interactionsSent?.[0];
+                const matchedJob = candidateJobLike
+                    ? employerJobs.find(j => j.id === candidateJobLike.targetJobId)
+                    : null;
+
+                return {
+                    candidate: {
+                        id: interaction.targetUser?.id,
+                        username: interaction.targetUser?.username,
+                        skills: interaction.targetUser?.skills,
+                        experience: interaction.targetUser?.experience
+                    },
+                    job: matchedJob,
+                    matchedAt: candidateJobLike?.createdAt || interaction.createdAt
+                };
             });
-            const jobIds = employerJobs.map(j => j.id);
-
-            // Check which candidates liked employer's jobs
-            for (const interaction of likedCandidates) {
-                if (!interaction.targetUser) continue;
-
-                const candidateLikedJob = await prisma.interaction.findFirst({
-                    where: {
-                        userId: interaction.targetUserId,
-                        targetJobId: { in: jobIds },
-                        type: 'like'
-                    }
-                });
-
-                if (candidateLikedJob) {
-                    const matchedJob = employerJobs.find(j => j.id === candidateLikedJob.targetJobId);
-
-                    matches.push({
-                        candidate: interaction.targetUser,
-                        job: matchedJob || null,
-                        matchedAt: candidateLikedJob.createdAt
-                    });
-                }
-            }
         }
 
-        res.json(matches);
+        res.json({
+            matches,
+            totalPages: Math.ceil(total / limit),
+            currentPage: page,
+            total
+        });
     } catch (err) {
-        console.error(err.message);
+        console.error('Matches error:', err.message);
         res.status(500).json({ msg: 'Server error' });
     }
 });
@@ -229,8 +356,10 @@ router.get('/matches', auth, async (req, res) => {
 // @access  Private
 router.get('/history', auth, async (req, res) => {
     try {
-        const { page = 1, limit = 20, type } = req.query;
-        const skip = (Number(page) - 1) * Number(limit);
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+        const skip = (page - 1) * limit;
+        const { type } = req.query;
 
         const user = await prisma.user.findUnique({
             where: { id: req.user.id }
@@ -250,7 +379,11 @@ router.get('/history', auth, async (req, res) => {
                 where,
                 include: {
                     targetJob: user.role === 'candidate' ? {
-                        include: {
+                        select: {
+                            id: true,
+                            title: true,
+                            location: true,
+                            salary: true,
                             employer: {
                                 select: {
                                     id: true,
@@ -271,7 +404,7 @@ router.get('/history', auth, async (req, res) => {
                 },
                 orderBy: { createdAt: 'desc' },
                 skip,
-                take: Number(limit)
+                take: limit
             }),
             prisma.interaction.count({ where })
         ]);
@@ -287,12 +420,12 @@ router.get('/history', auth, async (req, res) => {
 
         res.json({
             interactions: formattedInteractions,
-            totalPages: Math.ceil(total / Number(limit)),
-            currentPage: Number(page),
+            totalPages: Math.ceil(total / limit),
+            currentPage: page,
             total
         });
     } catch (err) {
-        console.error(err.message);
+        console.error('History error:', err.message);
         res.status(500).json({ msg: 'Server error' });
     }
 });

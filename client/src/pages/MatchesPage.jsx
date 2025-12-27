@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
+import { authFetch } from '../config/api';
 import { Heart, Briefcase, User, MapPin, DollarSign, ExternalLink, RefreshCw } from 'lucide-react';
-
-const API_URL = 'http://localhost:5000/api';
 
 const MatchesPage = () => {
     const { user } = useAuth();
@@ -17,17 +16,15 @@ const MatchesPage = () => {
         setLoading(true);
         setError(null);
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_URL}/interactions/matches`, {
-                headers: { 'x-auth-token': token }
-            });
+            const res = await authFetch('/interactions/matches');
 
             if (!res.ok) {
                 throw new Error('Failed to fetch matches');
             }
 
             const data = await res.json();
-            setMatches(data);
+            // Handle paginated response
+            setMatches(data.matches || data);
         } catch (err) {
             setError('Không thể tải danh sách matches');
         } finally {

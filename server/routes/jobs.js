@@ -3,31 +3,43 @@ const router = express.Router();
 const prisma = require('../lib/prisma');
 const { auth, isEmployer } = require('../middleware/auth');
 
+// Validation helpers
+const isValidString = (str, minLen = 1, maxLen = 1000) =>
+    typeof str === 'string' && str.trim().length >= minLen && str.trim().length <= maxLen;
+
+const isValidStatus = (status) => ['active', 'inactive'].includes(status);
+
+const sanitize = (str) => str?.trim() || '';
+
 // @route   GET api/jobs
-// @desc    Get all jobs with pagination and filters
+// @desc    Get all active jobs with pagination and filters
 // @access  Public
 router.get('/', async (req, res) => {
     try {
-        const { page = 1, limit = 10, location, minSalary, maxSalary, search } = req.query;
-        const skip = (Number(page) - 1) * Number(limit);
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const skip = (page - 1) * limit;
 
-        // Build where clause
-        const where = {};
+        const { location, minSalary, maxSalary, search } = req.query;
+
+        // Build where clause - only show active jobs
+        const where = { status: 'active' };
 
         if (location) {
-            where.location = { contains: location, mode: 'insensitive' };
+            where.location = { contains: sanitize(location), mode: 'insensitive' };
         }
 
         if (minSalary || maxSalary) {
             where.salary = {};
-            if (minSalary) where.salary.gte = Number(minSalary);
-            if (maxSalary) where.salary.lte = Number(maxSalary);
+            if (minSalary) where.salary.gte = Math.max(0, parseInt(minSalary) || 0);
+            if (maxSalary) where.salary.lte = Math.max(0, parseInt(maxSalary) || 0);
         }
 
         if (search) {
+            const searchTerm = sanitize(search);
             where.OR = [
-                { title: { contains: search, mode: 'insensitive' } },
-                { description: { contains: search, mode: 'insensitive' } }
+                { title: { contains: searchTerm, mode: 'insensitive' } },
+                { description: { contains: searchTerm, mode: 'insensitive' } }
             ];
         }
 
@@ -46,15 +58,15 @@ router.get('/', async (req, res) => {
                 },
                 orderBy: { createdAt: 'desc' },
                 skip,
-                take: Number(limit)
+                take: limit
             }),
             prisma.job.count({ where })
         ]);
 
         res.json({
             jobs,
-            totalPages: Math.ceil(total / Number(limit)),
-            currentPage: Number(page),
+            totalPages: Math.ceil(total / limit),
+            currentPage: page,
             total
         });
     } catch (err) {
@@ -117,13 +129,45 @@ router.post('/', [auth, isEmployer], async (req, res) => {
     try {
         const { title, description, requirements, salary, location } = req.body;
 
+        // Validation
+        if (!isValidString(title, 3, 200)) {
+            return res.status(400).json({ msg: 'Title must be 3-200 characters' });
+        }
+
+        if (!isValidString(description, 10, 5000)) {
+            return res.status(400).json({ msg: 'Description must be 10-5000 characters' });
+        }
+
+        if (!isValidString(location, 2, 100)) {
+            return res.status(400).json({ msg: 'Location must be 2-100 characters' });
+        }
+
+        // Validate requirements array
+        let validRequirements = [];
+        if (requirements && Array.isArray(requirements)) {
+            validRequirements = requirements
+                .filter(r => typeof r === 'string' && r.trim().length > 0)
+                .map(r => r.trim())
+                .slice(0, 20); // Max 20 requirements
+        }
+
+        // Validate salary
+        let validSalary = null;
+        if (salary !== undefined && salary !== null && salary !== '') {
+            validSalary = parseInt(salary);
+            if (isNaN(validSalary) || validSalary < 0) {
+                return res.status(400).json({ msg: 'Salary must be a positive number' });
+            }
+        }
+
         const job = await prisma.job.create({
             data: {
-                title,
-                description,
-                requirements: requirements || [],
-                salary: salary ? Number(salary) : null,
-                location,
+                title: sanitize(title),
+                description: sanitize(description),
+                requirements: validRequirements,
+                salary: validSalary,
+                location: sanitize(location),
+                status: 'active',
                 employerId: req.user.id
             }
         });
@@ -156,12 +200,55 @@ router.put('/:id', auth, async (req, res) => {
         const { title, description, requirements, salary, location, status } = req.body;
 
         const updateData = {};
-        if (title) updateData.title = title;
-        if (description) updateData.description = description;
-        if (requirements) updateData.requirements = requirements;
-        if (salary !== undefined) updateData.salary = salary ? Number(salary) : null;
-        if (location) updateData.location = location;
-        if (status) updateData.status = status;
+
+        if (title !== undefined) {
+            if (!isValidString(title, 3, 200)) {
+                return res.status(400).json({ msg: 'Title must be 3-200 characters' });
+            }
+            updateData.title = sanitize(title);
+        }
+
+        if (description !== undefined) {
+            if (!isValidString(description, 10, 5000)) {
+                return res.status(400).json({ msg: 'Description must be 10-5000 characters' });
+            }
+            updateData.description = sanitize(description);
+        }
+
+        if (location !== undefined) {
+            if (!isValidString(location, 2, 100)) {
+                return res.status(400).json({ msg: 'Location must be 2-100 characters' });
+            }
+            updateData.location = sanitize(location);
+        }
+
+        if (requirements !== undefined) {
+            if (Array.isArray(requirements)) {
+                updateData.requirements = requirements
+                    .filter(r => typeof r === 'string' && r.trim().length > 0)
+                    .map(r => r.trim())
+                    .slice(0, 20);
+            }
+        }
+
+        if (salary !== undefined) {
+            if (salary === null || salary === '') {
+                updateData.salary = null;
+            } else {
+                const parsedSalary = parseInt(salary);
+                if (isNaN(parsedSalary) || parsedSalary < 0) {
+                    return res.status(400).json({ msg: 'Salary must be a positive number' });
+                }
+                updateData.salary = parsedSalary;
+            }
+        }
+
+        if (status !== undefined) {
+            if (!isValidStatus(status)) {
+                return res.status(400).json({ msg: 'Status must be active or inactive' });
+            }
+            updateData.status = status;
+        }
 
         const job = await prisma.job.update({
             where: { id: req.params.id },

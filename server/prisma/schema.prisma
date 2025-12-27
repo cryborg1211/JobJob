@@ -44,6 +44,8 @@ model User {
   interactionsSent  Interaction[] @relation("InteractionFrom")
   interactionsReceived Interaction[] @relation("InteractionTo")
 
+  @@index([role])
+  @@index([createdAt])
   @@map("users")
 }
 
@@ -64,6 +66,10 @@ model Job {
 
   interactions Interaction[]
 
+  @@index([employerId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([status, createdAt])
   @@map("jobs")
 }
 
@@ -85,5 +91,10 @@ model Interaction {
 
   @@unique([userId, targetJobId])
   @@unique([userId, targetUserId])
+  @@index([userId])
+  @@index([userId, type])
+  @@index([targetUserId])
+  @@index([targetJobId])
+  @@index([createdAt])
   @@map("interactions")
 }
