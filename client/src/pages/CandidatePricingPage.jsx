@@ -1,14 +1,18 @@
 import React from 'react';
 import Navbar from '../components/Navbar';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const CandidatePricingPage = () => {
+    const { isAuthenticated } = useAuth();
+
     return (
         <div className="min-h-screen flex flex-col bg-background text-white">
             <Navbar />
 
             <div className="flex-1 flex flex-col items-center justify-center px-6 py-20">
-                <h2 className="text-3xl font-light mb-16 text-center">Các Hạn Mức Đăng Ký</h2>
+                <h2 className="text-3xl font-light mb-4 text-center">Các Hạn Mức Đăng Ký</h2>
+                <p className="text-text-muted mb-12 text-center">Dành cho Ứng Viên</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl w-full">
 
@@ -26,9 +30,15 @@ const CandidatePricingPage = () => {
                             </li>
                         </ul>
 
-                        <Link to="/signup?role=candidate" className="bg-black text-white py-5 rounded-full font-bold text-center hover:bg-gray-800 transition-colors uppercase tracking-widest text-lg">
-                            ĐĂNG KÝ NGAY
-                        </Link>
+                        {isAuthenticated ? (
+                            <Link to="/dashboard" className="bg-black text-white py-5 rounded-full font-bold text-center hover:bg-gray-800 transition-colors uppercase tracking-widest text-lg">
+                                VÀO DASHBOARD
+                            </Link>
+                        ) : (
+                            <Link to="/signup?role=candidate" className="bg-black text-white py-5 rounded-full font-bold text-center hover:bg-gray-800 transition-colors uppercase tracking-widest text-lg">
+                                ĐĂNG KÝ NGAY
+                            </Link>
+                        )}
                     </div>
 
                     {/* GOLD */}
@@ -49,11 +59,23 @@ const CandidatePricingPage = () => {
                             </li>
                         </ul>
 
-                        <Link to="/signup?role=candidate" className="bg-black text-white py-5 rounded-full font-bold text-center hover:bg-gray-900 transition-colors uppercase tracking-widest text-lg">
-                            ĐĂNG KÝ NGAY
-                        </Link>
+                        {isAuthenticated ? (
+                            <Link to="/dashboard" className="bg-black text-white py-5 rounded-full font-bold text-center hover:bg-gray-900 transition-colors uppercase tracking-widest text-lg">
+                                VÀO DASHBOARD
+                            </Link>
+                        ) : (
+                            <Link to="/signup?role=candidate" className="bg-black text-white py-5 rounded-full font-bold text-center hover:bg-gray-900 transition-colors uppercase tracking-widest text-lg">
+                                ĐĂNG KÝ NGAY
+                            </Link>
+                        )}
                     </div>
 
+                </div>
+
+                <div className="mt-12 text-center">
+                    <Link to="/pricing/employer" className="text-primary hover:underline">
+                        Xem gói cước cho Nhà Tuyển Dụng
+                    </Link>
                 </div>
             </div>
         </div>
