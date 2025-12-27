@@ -10,8 +10,8 @@ import CandidatePricingPage from './pages/CandidatePricingPage';
 
 function App() {
     return (
-        <AuthProvider>
-            <BrowserRouter>
+        <BrowserRouter>
+            <AuthProvider>
                 <Routes>
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/login" element={<LoginPage />} />
@@ -20,8 +20,8 @@ function App() {
                     <Route path="/pricing/employer" element={<EmployerPricingPage />} />
                     <Route path="/pricing/candidate" element={<CandidatePricingPage />} />
                 </Routes>
-            </BrowserRouter>
-        </AuthProvider>
+            </AuthProvider>
+        </BrowserRouter>
     );
 }
 
